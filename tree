@@ -1,0 +1,107 @@
+#!/bin/bash
+
+#read DEPTH
+DEPTH=5
+WIDTH=100
+HEIGHT=63
+
+MAPSIZE=$(( $WIDTH*$HEIGHT ))
+
+
+length=16
+declare -a trunks
+declare -a branches
+declare -a map
+
+# empty string for drawing tree at the end
+line=""
+
+# location of the brush set by move_brush from x y coords to 1d array index
+brush=0
+brush_height=0
+
+# trunks and branches modes for drawing
+mode="trunks"
+trunks=(51)
+branch_counter=0
+trunk_counter=0
+# move the paint brush takes and x y values and offsets it from 1 1 at lower
+# left to HEIGHT WIDTH in the one dimensional map array
+function move_brush {
+#	echo "brush recieved $1 $2"
+	brush=$(( $MAPSIZE - $(( $2 * $WIDTH + $1 )) ))
+#	echo "moving the brush to $brush"
+}
+# fill the map with blanks
+for i in $(seq 0 $(($MAPSIZE-1)))
+	do
+		map[$i]="_"
+	done
+# draw the tree path
+for i in $(seq 1 $(( $DEPTH*2 )))
+do
+#	echo "*******************"
+	if [ $mode == "trunks" ]
+		then
+#			echo "doin' trunks"
+			for j in ${trunks[@]}
+			do
+				trunk_counter=$(($trunk_counter+1))
+
+				for k in $(seq 0 $(($length - 2)) )
+				do
+					move_brush $j $(($brush_height+$k))
+					map[$brush]="1"
+				done
+			done
+			#move brush height by length
+#			echo "drew $trunk_counter trunks"
+			brush_height=$(($brush_height+$length-1))
+#			echo "brush_height set at end of trunks $brush_height"
+			mode="branches"
+		else
+#				echo "doin' branches"
+				for j in ${trunks[@]}
+				do
+					branch_counter=$(($branch_counter+2))
+					for k in $(seq 0 $(($length)))
+						do
+							move_brush $(( $j-$k )) $(($brush_height+$k))
+							map[$brush]='1'
+							move_brush $(( $j+$k )) $(($brush_height+$k))
+							map[$brush]='1'
+						done
+				done
+				for j in ${trunks[@]}
+					do
+						branches+=($(($j - $length)))
+						branches+=($(($j + $length)))
+					done
+				trunks=(${branches[@]})
+				branches=()
+				brush_height=$(($brush_height+$length+1))
+#				echo "brush_height set at end of branches $brush_height"
+				length=$(($length/2))
+
+				mode="trunks"
+#				echo "drew $branch_counter branches"
+				branch_counter=0
+				trunk_counter=0
+#				echo "saving the branch ends"
+#				echo "new trunk locations = ${trunks[@]} , $brush_height"
+#				echo "new length = $length"
+	fi
+done
+
+# draw the tree
+#echo drawing tree
+for i in $(seq 0 $(($HEIGHT-1)) )
+do
+	for j in $(seq 0 $(($WIDTH-1)) )
+		do
+		brush=$(( $i * $WIDTH + $j ))
+		line+=${map[$brush]}
+		done
+	echo $line
+	line=""
+done
